@@ -58,17 +58,12 @@ export class JobHandlerObserver<QueueNames extends string> implements LifeCycleO
 
   private getEnabledWorkerQueue() {
     const allQueues = this.component.config.queues;
-    console.log(process.env.WORKER_QUEUES)
-    if (!process.env.WORKER_QUEUES) return allQueues;
+    if (!this.component.config.enabledQueueNames.length) return allQueues;
 
-    const workerNames = process.env.WORKER_QUEUES.split(',').map((name) =>
-      name.trim().toLowerCase(),
-    );
-
-    if (workerNames.includes('*')) return allQueues;
+    const workerNames = this.component.config.enabledQueueNames;
 
     return allQueues.filter((queue) =>
-      workerNames.includes(queue.name.toLowerCase()),
+      workerNames.includes(queue.name),
     );
   }
 

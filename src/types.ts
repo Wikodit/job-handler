@@ -8,6 +8,7 @@ export interface JobHandlerOptions<QueueNames extends string> {
   redisConfig: RedisOptions,
   canConsume: boolean,
   canSchedule: boolean,
+  enabledQueueNames: QueueNames[],
   queues: QueueConfig<QueueNames>[],
 }
 
@@ -23,6 +24,7 @@ export const SAMPLE_JOB_HANDLER_OPTIONS: JobHandlerOptions<'example'> = {
   },
   canConsume: false,
   canSchedule: false,
+  enabledQueueNames: ['example'],
   queues: [{name: 'example'}],
 };
 
