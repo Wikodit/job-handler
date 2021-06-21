@@ -11,7 +11,15 @@ let JobHandlerObserver = class JobHandlerObserver {
         this.component = component;
     }
     async start() {
-        this.component.queues = Object.fromEntries(this.getEnabledWorkerQueues().map((q) => [q.name, new bullmq_1.Queue(q.name)]));
+        this.component.enabledQueues = Object.fromEntries(this.getEnabledWorkerQueues().map(q => [
+            q.name,
+            {
+                queue: new bullmq_1.Queue(q.name),
+                events: new bullmq_1.QueueEvents(q.name, q.eventsOptions),
+                workers: [],
+                schedulers: [],
+            },
+        ]));
         await this.component.initSharedConnection();
         if (this.component.config.canSchedule) {
             await this.initQueueSchedulers();
@@ -21,43 +29,46 @@ let JobHandlerObserver = class JobHandlerObserver {
         }
     }
     async stop() {
+        if (!this.component.enabledQueues)
+            return;
         if (this.component.config.canConsume) {
-            await Promise.all(this.component.workers.map((worker) => worker.close()));
+            const promises = [];
+            for (const enabledQueueName in this.component.enabledQueues) {
+                promises.push(...this.component.enabledQueues[enabledQueueName].workers.map(w => w.close()));
+            }
+            if (promises.length > 0) {
+                await Promise.all(promises);
+            }
         }
     }
     async initQueueSchedulers() {
-        const allQueues = this.component.config.queues;
-        this.component.queueSchedulers.push(...allQueues.map((q) => {
-            var _a;
-            return new bullmq_1.QueueScheduler(q.name, {
+        var _a, _b;
+        if (!this.component.enabledQueues)
+            return;
+        for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
+            this.component.enabledQueues[enabledQueueName].schedulers.push(new bullmq_1.QueueScheduler(enabledQueueName, {
                 connection: this.component.config.redisConfig,
-                ...((_a = q.queueOptions) !== null && _a !== void 0 ? _a : {}),
-            });
-        }));
+                ...((_b = (_a = this.component.config.queues.find(q => q.name === enabledQueueName)) === null || _a === void 0 ? void 0 : _a.queueOptions) !== null && _b !== void 0 ? _b : {}),
+            }));
+        }
     }
     async initQueueWorkers() {
-        if (!this.component.sharedConnection)
+        var _a, _b;
+        if (!this.component.sharedConnection || !this.component.enabledQueues)
             return;
-        const enabledWorkerQueueNames = this.getEnabledWorkerQueues();
-        const promises = this.component.config.queues
-            .filter((queue) => !!enabledWorkerQueueNames
-            .find(enabledQueue => enabledQueue.name === queue.name))
-            .map((queue) => this.instanciateWorker(queue, this.component.sharedConnection));
-        this.component.workers.push(...(await Promise.all(promises)));
+        for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
+            this.component.enabledQueues[enabledQueueName].workers.push(await this.instanciateWorker(enabledQueueName, (_b = (_a = this.component.config.queues.find(q => q.name === enabledQueueName)) === null || _a === void 0 ? void 0 : _a.workerOptions) !== null && _b !== void 0 ? _b : {}, this.component.sharedConnection));
+        }
     }
     getEnabledWorkerQueues() {
         const allQueues = this.component.config.queues;
-        if (!this.component.config.enabledQueueNames.length)
-            return allQueues;
         const workerNames = this.component.config.enabledQueueNames;
         return allQueues.filter((queue) => workerNames.includes(queue.name));
     }
-    async instanciateWorker(queue, sharedConnection) {
-        var _a;
-        const consumer = await this.component.application
-            .get(`services.${queue.name}Consumer`);
-        return new bullmq_1.Worker(queue.name, (job) => consumer.process(job), {
-            ...((_a = queue.workerOptions) !== null && _a !== void 0 ? _a : {}),
+    async instanciateWorker(name, options, sharedConnection) {
+        const consumer = await this.component.application.get(`services.${name}Consumer`);
+        return new bullmq_1.Worker(name, job => consumer.process(job), {
+            ...(options !== null && options !== void 0 ? options : {}),
             connection: sharedConnection,
         });
     }

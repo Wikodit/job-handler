@@ -1,18 +1,15 @@
 import { Application, Component } from '@loopback/core';
-import { Queue, QueueScheduler, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { JobHandlerObserver } from './observers';
-import { JobHandlerOptions } from './types';
-export declare class JobHandler<QueueName extends string> implements Component {
+import { EnabledQueue, JobHandlerOptions } from './types';
+export declare class JobHandler<QueueName extends string, EnabledQueueName extends QueueName = QueueName> implements Component {
     application: Application;
     private options;
     lifeCycleObservers: (typeof JobHandlerObserver)[];
-    queueSchedulers: QueueScheduler[];
-    queues: Record<string, Queue>;
-    workers: Worker[];
+    enabledQueues: Record<EnabledQueueName, EnabledQueue> | null;
     sharedConnection: IORedis.Redis | null;
     constructor(application: Application, options: JobHandlerOptions<QueueName>);
     get config(): JobHandlerOptions<QueueName>;
     initSharedConnection(): Promise<void>;
-    getQueue(name: QueueName): Queue;
+    getQueue(name: EnabledQueueName): EnabledQueue | null;
 }

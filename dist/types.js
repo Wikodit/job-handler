@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SAMPLE_JOB_HANDLER_OPTIONS = void 0;
 /**
-* Default options for the Job handler
-*/
+ * Default options for the Job handler
+ */
 exports.SAMPLE_JOB_HANDLER_OPTIONS = {
     redisConfig: {
         host: '127.0.0.1',

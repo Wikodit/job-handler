@@ -12,9 +12,7 @@ let JobHandler = class JobHandler {
         this.application = application;
         this.options = options;
         this.lifeCycleObservers = [observers_1.JobHandlerObserver];
-        this.queueSchedulers = [];
-        this.queues = {};
-        this.workers = [];
+        this.enabledQueues = null;
         this.sharedConnection = null;
     }
     get config() {
@@ -24,7 +22,9 @@ let JobHandler = class JobHandler {
         this.sharedConnection = new ioredis_1.default(this.options.redisConfig);
     }
     getQueue(name) {
-        return this.queues[name];
+        if (!this.enabledQueues)
+            return null;
+        return this.enabledQueues[name];
     }
 };
 JobHandler = tslib_1.__decorate([

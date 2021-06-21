@@ -1,21 +1,47 @@
 import {inject, LifeCycleObserver, lifeCycleObserver} from '@loopback/core';
-import {Queue, QueueScheduler, Worker} from 'bullmq';
+import {
+  Queue,
+  QueueEvents,
+  QueueScheduler,
+  Worker,
+  WorkerOptions,
+} from 'bullmq';
 import IORedis from 'ioredis';
 import {JobHandler} from '../component';
 import {JobHandlerBindings} from '../keys';
-import {Consumer, QueueConfig} from '../types';
+import {Consumer, EnabledQueue, QueueConfig} from '../types';
 
+interface EnabledQueueConfig<
+  QueueName extends string,
+  EnabledQueueName extends QueueName,
+> extends QueueConfig<QueueName> {
+  name: EnabledQueueName;
+}
 
 @lifeCycleObserver()
-export class JobHandlerObserver<QueueNames extends string> implements LifeCycleObserver {
+export class JobHandlerObserver<
+  QueueName extends string,
+  EnabledQueueName extends QueueName = QueueName,
+> implements LifeCycleObserver
+{
   constructor(
     @inject(JobHandlerBindings.COMPONENT)
-    public component: JobHandler<QueueNames>,
-  ) { }
+    public component: JobHandler<QueueName, EnabledQueueName>,
+  ) {}
 
   async start() {
-    this.component.queues = Object.fromEntries(this.getEnabledWorkerQueues().map((q) => [q.name, new Queue(q.name)]))
-    await this.component.initSharedConnection()
+    this.component.enabledQueues = Object.fromEntries(
+      this.getEnabledWorkerQueues().map(q => [
+        q.name,
+        {
+          queue: new Queue(q.name),
+          events: new QueueEvents(q.name, q.eventsOptions),
+          workers: [],
+          schedulers: [],
+        },
+      ]),
+    ) as unknown as Record<EnabledQueueName, EnabledQueue>;
+    await this.component.initSharedConnection();
     if (this.component.config.canSchedule) {
       await this.initQueueSchedulers();
     }
@@ -26,55 +52,80 @@ export class JobHandlerObserver<QueueNames extends string> implements LifeCycleO
   }
 
   async stop() {
+    if (!this.component.enabledQueues) return;
     if (this.component.config.canConsume) {
-      await Promise.all(this.component.workers.map((worker) => worker.close()));
+      const promises = [];
+      for (const enabledQueueName in this.component.enabledQueues) {
+        promises.push(
+          ...this.component.enabledQueues[
+            enabledQueueName as EnabledQueueName
+          ].workers.map(w => w.close()),
+        );
+      }
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
     }
   }
 
   async initQueueSchedulers() {
-    const allQueues = this.component.config.queues;
-    this.component.queueSchedulers.push(...allQueues.map((q) =>
-      new QueueScheduler(
-        q.name, {
-        connection: this.component.config.redisConfig,
-        ...(q.queueOptions ?? {}),
-      }),
-    ))
+    if (!this.component.enabledQueues) return;
+
+    for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
+      this.component.enabledQueues[
+        enabledQueueName as EnabledQueueName
+      ].schedulers.push(
+        new QueueScheduler(enabledQueueName, {
+          connection: this.component.config.redisConfig,
+          ...(this.component.config.queues.find(
+            q => q.name === enabledQueueName,
+          )?.queueOptions ?? {}),
+        }),
+      );
+    }
   }
 
   async initQueueWorkers() {
-    if (!this.component.sharedConnection) return
-    const enabledWorkerQueueNames = this.getEnabledWorkerQueues();
+    if (!this.component.sharedConnection || !this.component.enabledQueues)
+      return;
 
-    const promises = this.component.config.queues
-      .filter((queue) => !!enabledWorkerQueueNames
-        .find(enabledQueue => enabledQueue.name === queue.name))
-      .map((queue) =>
-        this.instanciateWorker(queue, this.component.sharedConnection!),
+    for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
+      this.component.enabledQueues[
+        enabledQueueName as EnabledQueueName
+      ].workers.push(
+        await this.instanciateWorker(
+          enabledQueueName as EnabledQueueName,
+          this.component.config.queues.find(q => q.name === enabledQueueName)
+            ?.workerOptions ?? {},
+          this.component.sharedConnection,
+        ),
       );
-
-    this.component.workers.push(...(await Promise.all(promises)));
+    }
   }
 
-  private getEnabledWorkerQueues() {
+  private getEnabledWorkerQueues(): EnabledQueueConfig<
+    QueueName,
+    EnabledQueueName
+  >[] {
     const allQueues = this.component.config.queues;
-    if (!this.component.config.enabledQueueNames.length) return allQueues;
 
     const workerNames = this.component.config.enabledQueueNames;
-
-    return allQueues.filter((queue) =>
-      workerNames.includes(queue.name),
+    return allQueues.filter(
+      (queue): queue is EnabledQueueConfig<QueueName, EnabledQueueName> =>
+        workerNames.includes(queue.name),
     );
   }
 
   private async instanciateWorker(
-    queue: QueueConfig<QueueNames>,
+    name: EnabledQueueName,
+    options: WorkerOptions,
     sharedConnection: IORedis.Redis,
   ) {
-    const consumer: Consumer = await this.component.application
-      .get(`services.${queue.name}Consumer`);
-    return new Worker(queue.name, (job) => consumer.process(job), {
-      ...(queue.workerOptions ?? {}),
+    const consumer: Consumer = await this.component.application.get(
+      `services.${name}Consumer`,
+    );
+    return new Worker(name, job => consumer.process(job), {
+      ...(options ?? {}),
       connection: sharedConnection,
     });
   }
