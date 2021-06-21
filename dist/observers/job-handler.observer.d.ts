@@ -7,7 +7,7 @@ export declare class JobHandlerObserver<QueueNames extends string> implements Li
     stop(): Promise<void>;
     initQueueSchedulers(): Promise<void>;
     initQueueWorkers(): Promise<void>;
-    private getEnabledWorkerQueue;
+    private getEnabledWorkerQueues;
     private instanciateWorker;
 }
 export default JobHandlerObserver;

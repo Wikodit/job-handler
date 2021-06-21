@@ -11,7 +11,7 @@ let JobHandlerObserver = class JobHandlerObserver {
         this.component = component;
     }
     async start() {
-        this.component.queues = Object.fromEntries(this.getEnabledWorkerQueue().map((q) => [q.name, new bullmq_1.Queue(q.name)]));
+        this.component.queues = Object.fromEntries(this.getEnabledWorkerQueues().map((q) => [q.name, new bullmq_1.Queue(q.name)]));
         await this.component.initSharedConnection();
         if (this.component.config.canSchedule) {
             await this.initQueueSchedulers();
@@ -38,14 +38,14 @@ let JobHandlerObserver = class JobHandlerObserver {
     async initQueueWorkers() {
         if (!this.component.sharedConnection)
             return;
-        const enabledWorkerQueueNames = this.getEnabledWorkerQueue();
+        const enabledWorkerQueueNames = this.getEnabledWorkerQueues();
         const promises = this.component.config.queues
             .filter((queue) => !!enabledWorkerQueueNames
             .find(enabledQueue => enabledQueue.name === queue.name))
             .map((queue) => this.instanciateWorker(queue, this.component.sharedConnection));
         this.component.workers.push(...(await Promise.all(promises)));
     }
-    getEnabledWorkerQueue() {
+    getEnabledWorkerQueues() {
         const allQueues = this.component.config.queues;
         if (!this.component.config.enabledQueueNames.length)
             return allQueues;

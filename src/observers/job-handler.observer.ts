@@ -14,7 +14,7 @@ export class JobHandlerObserver<QueueNames extends string> implements LifeCycleO
   ) { }
 
   async start() {
-    this.component.queues = Object.fromEntries(this.getEnabledWorkerQueue().map((q) => [q.name, new Queue(q.name)]))
+    this.component.queues = Object.fromEntries(this.getEnabledWorkerQueues().map((q) => [q.name, new Queue(q.name)]))
     await this.component.initSharedConnection()
     if (this.component.config.canSchedule) {
       await this.initQueueSchedulers();
@@ -44,7 +44,7 @@ export class JobHandlerObserver<QueueNames extends string> implements LifeCycleO
 
   async initQueueWorkers() {
     if (!this.component.sharedConnection) return
-    const enabledWorkerQueueNames = this.getEnabledWorkerQueue();
+    const enabledWorkerQueueNames = this.getEnabledWorkerQueues();
 
     const promises = this.component.config.queues
       .filter((queue) => !!enabledWorkerQueueNames
@@ -56,7 +56,7 @@ export class JobHandlerObserver<QueueNames extends string> implements LifeCycleO
     this.component.workers.push(...(await Promise.all(promises)));
   }
 
-  private getEnabledWorkerQueue() {
+  private getEnabledWorkerQueues() {
     const allQueues = this.component.config.queues;
     if (!this.component.config.enabledQueueNames.length) return allQueues;
 

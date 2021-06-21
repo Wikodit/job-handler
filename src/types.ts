@@ -46,5 +46,6 @@ export interface QueueConfig<QueueNames extends string> {
 }
 
 export interface Consumer {
-  process(job: Job): Promise<void>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  process(job: Job): Promise<any>;
 }

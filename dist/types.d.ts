@@ -30,5 +30,5 @@ export interface QueueConfig<QueueNames extends string> {
     queueOptions?: QueueOptions;
 }
 export interface Consumer {
-    process(job: Job): Promise<void>;
+    process(job: Job): Promise<any>;
 }
