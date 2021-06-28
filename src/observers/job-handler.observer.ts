@@ -4,7 +4,7 @@ import {
   QueueEvents,
   QueueScheduler,
   Worker,
-  WorkerOptions,
+  WorkerOptions
 } from 'bullmq';
 import IORedis from 'ioredis';
 import {JobHandler} from '../component';
@@ -14,7 +14,7 @@ import {Consumer, EnabledQueue, QueueConfig} from '../types';
 interface EnabledQueueConfig<
   QueueName extends string,
   EnabledQueueName extends QueueName,
-> extends QueueConfig<QueueName> {
+  > extends QueueConfig<QueueName> {
   name: EnabledQueueName;
 }
 
@@ -22,26 +22,34 @@ interface EnabledQueueConfig<
 export class JobHandlerObserver<
   QueueName extends string,
   EnabledQueueName extends QueueName = QueueName,
-> implements LifeCycleObserver
-{
+  > implements LifeCycleObserver {
   constructor(
     @inject(JobHandlerBindings.COMPONENT)
     public component: JobHandler<QueueName, EnabledQueueName>,
-  ) {}
+  ) { }
 
   async start() {
+    await this.component.initSharedConnection();
+    if (!this.component.sharedConnection) return
+
     this.component.enabledQueues = Object.fromEntries(
       this.getEnabledWorkerQueues().map(q => [
         q.name,
         {
-          queue: new Queue(q.name),
-          events: new QueueEvents(q.name, q.eventsOptions),
+          queue: new Queue(q.name, {
+            connection: this.component.sharedConnection!,
+            ...q.queueOptions
+          }),
+          events: new QueueEvents(q.name, {
+            connection: this.component.sharedConnection!,
+            ...q.eventsOptions
+          }),
           workers: [],
           schedulers: [],
         },
       ]),
     ) as unknown as Record<EnabledQueueName, EnabledQueue>;
-    await this.component.initSharedConnection();
+
     if (this.component.config.canSchedule) {
       await this.initQueueSchedulers();
     }
@@ -69,14 +77,15 @@ export class JobHandlerObserver<
   }
 
   async initQueueSchedulers() {
-    if (!this.component.enabledQueues) return;
+    if (!this.component.enabledQueues || !this.component.sharedConnection)
+      return;
 
     for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
       this.component.enabledQueues[
         enabledQueueName as EnabledQueueName
       ].schedulers.push(
         new QueueScheduler(enabledQueueName, {
-          connection: this.component.config.redisConfig,
+          connection: this.component.sharedConnection,
           ...(this.component.config.queues.find(
             q => q.name === enabledQueueName,
           )?.queueOptions ?? {}),
