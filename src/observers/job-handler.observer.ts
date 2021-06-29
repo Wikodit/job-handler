@@ -88,7 +88,7 @@ export class JobHandlerObserver<
           connection: this.component.sharedConnection,
           ...(this.component.config.queues.find(
             q => q.name === enabledQueueName,
-          )?.queueOptions ?? {}),
+          )?.schedulerOptions ?? {}),
         }),
       );
     }
@@ -134,8 +134,8 @@ export class JobHandlerObserver<
       `services.${name}Consumer`,
     );
     return new Worker(name, job => consumer.process(job), {
-      ...(options ?? {}),
       connection: sharedConnection,
+      ...(options ?? {}),
     });
   }
 }
