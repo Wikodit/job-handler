@@ -7,7 +7,6 @@ import {
   inject,
   injectable,
 } from '@loopback/core';
-import IORedis from 'ioredis';
 import {JobHandlerBindings} from './keys';
 import {JobHandlerObserver} from './observers';
 import {EnabledQueue, JobHandlerOptions} from './types';
@@ -22,7 +21,6 @@ export class JobHandler<
   lifeCycleObservers = [JobHandlerObserver];
 
   public enabledQueues: Record<EnabledQueueName, EnabledQueue> | null = null;
-  public sharedConnection: IORedis.Redis | null = null;
 
   constructor(
     @inject(CoreBindings.APPLICATION_INSTANCE)
@@ -33,10 +31,6 @@ export class JobHandler<
 
   get config(): JobHandlerOptions<QueueName> {
     return JSON.parse(JSON.stringify(this.options));
-  }
-
-  async initSharedConnection() {
-    this.sharedConnection = new IORedis(this.options.redisConfig);
   }
 
   getQueue(name: EnabledQueueName): EnabledQueue | null {

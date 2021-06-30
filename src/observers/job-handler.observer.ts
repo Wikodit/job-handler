@@ -4,7 +4,7 @@ import {
   QueueEvents,
   QueueScheduler,
   Worker,
-  WorkerOptions
+  WorkerOptions,
 } from 'bullmq';
 import IORedis from 'ioredis';
 import {JobHandler} from '../component';
@@ -14,7 +14,7 @@ import {Consumer, EnabledQueue, QueueConfig} from '../types';
 interface EnabledQueueConfig<
   QueueName extends string,
   EnabledQueueName extends QueueName,
-  > extends QueueConfig<QueueName> {
+> extends QueueConfig<QueueName> {
   name: EnabledQueueName;
 }
 
@@ -22,27 +22,25 @@ interface EnabledQueueConfig<
 export class JobHandlerObserver<
   QueueName extends string,
   EnabledQueueName extends QueueName = QueueName,
-  > implements LifeCycleObserver {
+> implements LifeCycleObserver
+{
   constructor(
     @inject(JobHandlerBindings.COMPONENT)
     public component: JobHandler<QueueName, EnabledQueueName>,
-  ) { }
+  ) {}
 
   async start() {
-    await this.component.initSharedConnection();
-    if (!this.component.sharedConnection) return
-
     this.component.enabledQueues = Object.fromEntries(
       this.getEnabledWorkerQueues().map(q => [
         q.name,
         {
           queue: new Queue(q.name, {
-            connection: this.component.sharedConnection!,
-            ...q.queueOptions
+            connection: this.component.config.redisConfig,
+            ...q.queueOptions,
           }),
           events: new QueueEvents(q.name, {
-            connection: this.component.sharedConnection!,
-            ...q.eventsOptions
+            connection: this.component.config.redisConfig,
+            ...q.eventsOptions,
           }),
           workers: [],
           schedulers: [],
@@ -77,15 +75,14 @@ export class JobHandlerObserver<
   }
 
   async initQueueSchedulers() {
-    if (!this.component.enabledQueues || !this.component.sharedConnection)
-      return;
+    if (!this.component.enabledQueues) return;
 
     for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
       this.component.enabledQueues[
         enabledQueueName as EnabledQueueName
       ].schedulers.push(
         new QueueScheduler(enabledQueueName, {
-          connection: this.component.sharedConnection,
+          connection: this.component.config.redisConfig,
           ...(this.component.config.queues.find(
             q => q.name === enabledQueueName,
           )?.schedulerOptions ?? {}),
@@ -95,8 +92,7 @@ export class JobHandlerObserver<
   }
 
   async initQueueWorkers() {
-    if (!this.component.sharedConnection || !this.component.enabledQueues)
-      return;
+    if (!this.component.enabledQueues) return;
 
     for (const enabledQueueName of Object.keys(this.component.enabledQueues)) {
       this.component.enabledQueues[
@@ -106,7 +102,6 @@ export class JobHandlerObserver<
           enabledQueueName as EnabledQueueName,
           this.component.config.queues.find(q => q.name === enabledQueueName)
             ?.workerOptions ?? {},
-          this.component.sharedConnection,
         ),
       );
     }
@@ -128,13 +123,12 @@ export class JobHandlerObserver<
   private async instanciateWorker(
     name: EnabledQueueName,
     options: WorkerOptions,
-    sharedConnection: IORedis.Redis,
   ) {
     const consumer: Consumer = await this.component.application.get(
       `services.${name}Consumer`,
     );
     return new Worker(name, job => consumer.process(job), {
-      connection: sharedConnection,
+      connection: this.component.config.redisConfig,
       ...(options ?? {}),
     });
   }
