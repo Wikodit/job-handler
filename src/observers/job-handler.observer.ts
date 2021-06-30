@@ -6,7 +6,6 @@ import {
   Worker,
   WorkerOptions,
 } from 'bullmq';
-import IORedis from 'ioredis';
 import {JobHandler} from '../component';
 import {JobHandlerBindings} from '../keys';
 import {Consumer, EnabledQueue, QueueConfig} from '../types';
