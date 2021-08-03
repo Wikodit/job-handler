@@ -16,7 +16,7 @@ Configure and load JobHandler in the application constructor
 as shown below.
 
 ```ts
-import {JobHandler, JobHandlerOptions, DEFAULT_JOB_HANDLER_OPTIONS} from 'job-handler';
+import { JobHandler, JobHandlerOptions, DEFAULT_JOB_HANDLER_OPTIONS } from 'job-handler';
 // ...
 export class MyApplication extends BootMixin(ServiceMixin(RepositoryMixin(RestApplication))) {
   constructor(options: ApplicationConfig = {}) {

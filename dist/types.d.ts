@@ -9,6 +9,7 @@ export interface JobHandlerOptions<QueueName extends string, EnabledQueueName ex
     canSchedule: boolean;
     enabledQueueNames: EnabledQueueName[];
     queues: QueueConfig<QueueName>[];
+    suffixForConsumers?: string;
 }
 /**
  * Default options for the Job handler
@@ -38,4 +39,7 @@ export interface EnabledQueue {
     events: QueueEvents;
     workers: Worker[];
     schedulers: QueueScheduler[];
+}
+export interface EnabledQueueConfig<QueueName extends string, EnabledQueueName extends QueueName> extends QueueConfig<QueueName> {
+    name: EnabledQueueName;
 }

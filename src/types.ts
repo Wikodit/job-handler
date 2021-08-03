@@ -23,6 +23,7 @@ export interface JobHandlerOptions<
   canSchedule: boolean;
   enabledQueueNames: EnabledQueueName[];
   queues: QueueConfig<QueueName>[];
+  suffixForConsumers?: string;
 }
 
 /**
@@ -38,7 +39,8 @@ export const SAMPLE_JOB_HANDLER_OPTIONS: JobHandlerOptions<'example'> = {
   canConsume: false,
   canSchedule: false,
   enabledQueueNames: ['example'],
-  queues: [{name: 'example'}],
+  queues: [{ name: 'example' }],
+  suffixForConsumers: 'Consumer'
 };
 
 export interface RepeatableJob {
@@ -69,4 +71,11 @@ export interface EnabledQueue {
   events: QueueEvents;
   workers: Worker[];
   schedulers: QueueScheduler[];
+}
+
+export interface EnabledQueueConfig<
+  QueueName extends string,
+  EnabledQueueName extends QueueName,
+> extends QueueConfig<QueueName> {
+  name: EnabledQueueName;
 }

@@ -1,12 +1,15 @@
-import { Application, Component } from '@loopback/core';
-import { JobHandlerObserver } from './observers';
+import { Application, Component, LifeCycleObserver } from '@loopback/core';
 import { EnabledQueue, JobHandlerOptions } from './types';
-export declare class JobHandler<QueueName extends string, EnabledQueueName extends QueueName = QueueName> implements Component {
+export declare class JobHandler<QueueName extends string, EnabledQueueName extends QueueName = QueueName> implements Component, LifeCycleObserver {
     application: Application;
     private options;
-    lifeCycleObservers: (typeof JobHandlerObserver)[];
     enabledQueues: Record<EnabledQueueName, EnabledQueue> | null;
     constructor(application: Application, options: JobHandlerOptions<QueueName>);
-    get config(): JobHandlerOptions<QueueName>;
     getQueue(name: EnabledQueueName): EnabledQueue | null;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    initQueueSchedulers(): Promise<void>;
+    initQueueWorkers(): Promise<void>;
+    private getEnabledWorkerQueues;
+    private instanciateWorker;
 }

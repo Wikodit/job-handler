@@ -15,5 +15,6 @@ exports.SAMPLE_JOB_HANDLER_OPTIONS = {
     canSchedule: false,
     enabledQueueNames: ['example'],
     queues: [{ name: 'example' }],
+    suffixForConsumers: 'Consumer'
 };
 //# sourceMappingURL=types.js.map
