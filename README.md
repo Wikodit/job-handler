@@ -172,7 +172,7 @@ export const JOB_HANDLER_CONFIG: JobHandlerOptions<QueueName> = {
   ],
   enabledQueueNames: (process.env.JOB_HANDLER_ENABLED_QUEUE_NAMES ?? '').split(
     ';',
-  ),
+  ) as QueueName[],
   suffixForConsumers: 'Consumer',
 };
 ```
