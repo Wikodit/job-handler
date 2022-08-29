@@ -42,7 +42,7 @@
   ],
   "peerDependencies": {
     "@loopback/core": ">= 2.16.1",
-    "ioredis": "4.x"
+    "ioredis": ">= 4.0.0"
   },
   "dependencies": {
     "bullmq": "^1.34.0",
