@@ -2,9 +2,10 @@
 
 [![LoopBack](<https://github.com/strongloop/loopback-next/raw/master/docs/site/imgs/branding/Powered-by-LoopBack-Badge-(blue)-@2x.png>)](http://loopback.io/)
 
+[![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
+
 This module is created to handle jobs in **Loopback 4** based on **[bullmq](https://github.com/taskforcesh/bullmq)**.
 
-[![Redis](https://redis.io/images/redis-white.png)](https://redis.io/)
 This component is designed to work with **Redis**. You MUST have a running Redis database in order for the application to start.
 
 ## Installation
